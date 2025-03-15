@@ -50,11 +50,11 @@ def create_agent(metadata: Dict[str, Any] | None):
     agent_config = AzureOpenAIAgentConfig(
         agent_name="documentation_agent",
         description="An agent that generates documentation for code snippets",
-        # model_name="gpt-4o",
-        model_name="o3-mini",
+        model_name="gpt-4o",
+        # model_name="o3-mini",
         agent_type="ChatAgent",
         tool_registry=tool_registry,
-        system_prompt=get_system_prompt(),
+        system_prompt=get_system_prompt(generate_examples=True),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_version=os.getenv("AZURE_OPENAI_API_VERSION") or "2024-12-01-preview",
@@ -125,12 +125,17 @@ The code snippet is:
 {code_snippet}
 ```
 """
-    return process_message(user_message=user_message, metadata={"code": code_snippet, "path": file_path})
+    response = process_message(user_message=user_message, metadata={"code": code_snippet, "path": file_path})
+    if "<documentation>" in response:
+        documentation = response.split("<documentation>")[1].split("</documentation>")[0].strip()
+    else:
+        documentation = response
+    return documentation
 
 def main():
     """Example usage of the generate_documentation function."""
     code_snippet = """
-def dot_product(v1: list[int], v2: list[int]) -> int:
+def dot_product(v1: Vec, v2: Vec) -> int:
     ans = 0
     if len(v1) != len(v2):
         return None

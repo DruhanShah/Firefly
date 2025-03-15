@@ -2,6 +2,18 @@
 from typing import Callable, Dict, Any
 
 def get_code(code, file_path, symbol_name, row, col):
+    if symbol_name == "Vec":
+        return """class Vec:
+def __init__(self, n, list_of_values=None):
+    self.n = n
+    self.values = list_of_values or [0] * n
+def __repr__(self):
+    return f"Vec({self.n}, {self.values})"
+def __getitem__(self, i):
+    return self.values[i]
+def __setitem__(self, i, val):
+    self.values[i] = val
+"""
     return None
 
 def lsp_tool_definition(metadata: Dict[str, Any] | None) -> Callable:
@@ -25,7 +37,7 @@ def lsp_tool_definition(metadata: Dict[str, Any] | None) -> Callable:
         Returns:
             str: The definition of the symbol.
         """
-        # print("yayyy tooll callll", metadata)
+        print(f"Tool call: Querying symbol '{symbol_name}' at row {row} and column {col}...")
         if metadata.get("code") is None or metadata.get("path") is None:
             return "No code snippet provided (metadata not setup correctly)."
         code = metadata["code"]
