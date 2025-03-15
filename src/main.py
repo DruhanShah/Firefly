@@ -5,6 +5,7 @@ import argparse
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from agent.generate_documentation import generate_documentation
+from agent.format_docs import format_docs_file
 
 def main():
     """
@@ -23,25 +24,48 @@ def main():
             print(f"Warning: File type {file_path.suffix} may not be supported.")
         print("Writing docs for:", file_path.name, "...")
         write_docs_for_file(file_path)
-        print("Docs written for:", file_path.name)
+        docs_path = Path(file_path.parent, "docs.md")
+        print("Formatting docs for:", docs_path, "...")
+        format_docs_file(docs_path)
+        print("Docs written and formatted for:", file_path.name)
     elif args.directory:
         dir_path = Path(args.directory).absolute()
         if not dir_path.exists() or not dir_path.is_dir():
             print(f"Error: Directory {dir_path} does not exist.")
             sys.exit(1)
         print("Directory path:", dir_path)
+        
+        all_doc_files = []  # Track all generated doc files
 
         for root, _, filenames in os.walk(str(dir_path)):
-            with open(Path(root, "docs.md"), "w", encoding="utf-8") as f:
+            root_path = Path(root)
+            docs_path = Path(root_path, "docs.md")
+            
+            # Create initial docs file for this directory
+            with open(docs_path, "w", encoding="utf-8") as f:
                 print("# Documentation for", root, "\n\n", file=f)
+            
+            has_docs = False
             for filename in filenames:
                 file_ext = filename.split(".")[-1]
                 if file_ext in supported_lang_exts:
                     print("Writing docs for:", filename, "...")
-                    write_docs_for_file(Path(root) / filename)
+                    write_docs_for_file(root_path / filename)
+                    has_docs = True
                     print("Docs written for:", filename, "\n\n")
                 else:
                     print(f"Skipping {filename} - unsupported file type: .{file_ext}")
+            
+            # Format docs for this directory if any were created
+            if has_docs:
+                print(f"Formatting docs in {docs_path}...")
+                format_docs_file(docs_path)
+                all_doc_files.append(docs_path)
+                print(f"Docs formatted for {root}")
+        
+        # Create index file with links to all docs
+        create_docs_index(dir_path, all_doc_files)
+        print(f"Documentation index created at {dir_path / 'docs_index.md'}")
 
 def parse_arguments():
     """
@@ -81,6 +105,43 @@ def write_docs_for_file(file):
     with open(Path(file.parent, "docs.md"), "a", encoding="utf-8") as f:
         print("## Documentation for", file.name, "\n", file=f)
         print("\n".join(documentation), file=f)
+
+def create_docs_index(base_dir, doc_files):
+    """
+    Create an index file with links to all generated documentation files.
+    
+    Args:
+        base_dir (Path): The base directory for the documentation
+        doc_files (list): List of paths to all generated documentation files
+    """
+    index_path = Path(base_dir, "docs_index.md")
+    
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(f"# Documentation Index\n\n")
+        f.write(f"This file contains links to all generated documentation for the project.\n\n")
+        
+        # Group by directory for better organization
+        by_directory = {}
+        for doc_file in doc_files:
+            rel_dir = doc_file.parent.relative_to(base_dir)
+            if rel_dir not in by_directory:
+                by_directory[rel_dir] = []
+            by_directory[rel_dir].append(doc_file)
+        
+        # Write links organized by directory
+        for dir_path in sorted(by_directory.keys()):
+            if str(dir_path) == '.':
+                dir_display = 'Root Directory'
+            else:
+                dir_display = str(dir_path)
+                
+            f.write(f"## {dir_display}\n\n")
+            
+            for doc_file in sorted(by_directory[dir_path]):
+                rel_path = doc_file.relative_to(base_dir)
+                f.write(f"- [{rel_path}](./{rel_path})\n")
+            
+            f.write("\n")
 
 def setup_lsp_server(file):
     """
