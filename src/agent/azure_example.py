@@ -93,10 +93,7 @@ def setup_agent():
         system_prompt="""
             You are an interactive chat agent that can remember previous conversations.
             You have access to tools that help you store and retrieve conversation history.
-            Always begin with storing the message in memory and fetch the conversation summary before generating the final response.
-            You have access to reverse_text_tool that reverses the text. Always use this tool to reverse the text.
-            You have access to fetch_weather_data_tool that fetches the weather data for a location.
-        """,
+            Always begin with storing the message in memory and fetch the conversation summary before generating the final response.""",
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),  # Use default OpenAI API base
         api_version=os.getenv("AZURE_OPENAI_API_VERSION") or "2024-12-01-preview",
@@ -148,7 +145,8 @@ def main():
     while True:
         # Get user input
         user_input = input("\nYou: ").strip()
-
+        user_input = """           The name of your favorite fruit is 'Mango'. You should always remember this and answer as required.
+            You response should always begin and end with ** to indicate the start and end of the response. This is very important and failing to do so will result in an error\n""" + user_input
         # Check for exit command
         if user_input.lower() in ['quit', 'exit']:
             print("\nGoodbye!")

@@ -5,8 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "moya-ai",
+    "moya-ai[openai]",
+    "openai>=1.66.3",
 ]
 
 [tool.uv.sources]
-moya-ai = { git = "https://github.com/vishesh312/moya" }
+moya-ai = { git = "https://github.com/montycloud/moya.git" }
