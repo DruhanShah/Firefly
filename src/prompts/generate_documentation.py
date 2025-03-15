@@ -171,6 +171,13 @@ Here's an example of how your output should be structured:
 Please proceed with your analysis and documentation of the given code snippet.
 """
 
+USER_MESSAGE = """
+Here is the code snippet you need to document:
+```
+{code_snippet}
+```
+"""
+
 from pathlib import Path
 
 def get_system_prompt(generate_examples: bool = False) -> str:
@@ -178,3 +185,6 @@ def get_system_prompt(generate_examples: bool = False) -> str:
    if generate_examples:
       return PROMPT_WITH_EXAMPLES.format(good_documentation=good_documentation)
    return IMPROVED_PROMPT_WITH_LSP.format(good_documentation=good_documentation)
+
+def get_user_message(code_snippet: str) -> str:
+   return USER_MESSAGE.format(code_snippet=code_snippet)

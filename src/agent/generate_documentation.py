@@ -9,42 +9,49 @@ from moya.tools.base_tool import BaseTool
 from moya.registry.agent_registry import AgentRegistry
 from moya.orchestrators.simple_orchestrator import SimpleOrchestrator
 from moya.agents.azure_openai_agent import AzureOpenAIAgent, AzureOpenAIAgentConfig
+from pathlib import Path
 from typing import Dict, Any
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from src.prompts.document_code import get_system_prompt
+from src.prompts.generate_documentation import get_system_prompt, get_user_message
 from src.tools.lsp import lsp_tool_definition
 
-def create_agent(metadata: Dict[str, Any] | None):
+def create_agent(metadata: Dict[str, Any] | None = None):
     """
     Create an Azure OpenAI agent for code documentation.
+    
+    Args:
+        metadata (Dict[str, Any] | None, optional): Metadata for the agent. Defaults to None.
     
     Returns:
         tuple: A tuple containing the orchestrator and agent.
     """
-    # Set up a basic tool registry (no tools for this simple example)
+    # Set up a tool registry
     tool_registry = ToolRegistry()
-    lsp_tool = BaseTool(
-        name="query_symbol",
-        description="Tool to query a symbol from the code snippet provided. The symbol can be a function, variable, or any other entity. The response will provide the symbol's definition.",
-        function=lsp_tool_definition(metadata),
-        parameters={
-            "symbol_name": {
-                "type": "string",
-                "description": "The name of the symbol to query."
+    
+    # Add LSP tool if metadata is provided
+    if metadata:
+        lsp_tool = BaseTool(
+            name="query_symbol",
+            description="Tool to query a symbol from the code snippet provided. The symbol can be a function, variable, or any other entity. The response will provide the symbol's definition.",
+            function=lsp_tool_definition(metadata),
+            parameters={
+                "symbol_name": {
+                    "type": "string",
+                    "description": "The name of the symbol to query."
+                },
+                "row": {
+                    "type": "integer",
+                    "description": "The row number where the symbol is located in the code snippet provided."
+                },
+                "col": {
+                    "type": "integer",
+                    "description": "The column number where the symbol is located in the code snippet provided."
+                }
             },
-            "row": {
-                "type": "integer",
-                "description": "The row number where the symbol is located in the code snippet provided."
-            },
-            "col": {
-                "type": "integer",
-                "description": "The column number where the symbol is located in the code snippet provided."
-            }
-        },
-        required=["symbol_name", "row", "col"]
-    )
-    tool_registry.register_tool(lsp_tool)
+            required=["symbol_name", "row", "col"]
+        )
+        tool_registry.register_tool(lsp_tool)
     
     # Create agent configuration
     agent_config = AzureOpenAIAgentConfig(
@@ -74,13 +81,14 @@ def create_agent(metadata: Dict[str, Any] | None):
     
     return orchestrator, agent
 
-def process_message(user_message: str, metadata: Dict[str, Any] | None, stream: bool=False):
+def process_message(user_message: str, metadata: Dict[str, Any] | None = None, stream: bool=False):
     """
     Process a user message with the documentation agent.
     
     Args:
         user_message (str): The user's input message to process.
-        stream (bool): Whether to stream the output character by character.
+        metadata (Dict[str, Any] | None, optional): Metadata for the agent. Defaults to None.
+        stream (bool, optional): Whether to stream the output character by character. Defaults to False.
         
     Returns:
         str: The agent's response.
@@ -115,21 +123,24 @@ def generate_documentation(code_snippet: str, file_path: str=""):
     
     Args:
         code_snippet (str): The code snippet to document.
+        file_path (str, optional): Path to the file containing the code snippet. Defaults to "".
         
     Returns:
         str: The generated documentation.
     """
-    user_message = f"""
-The code snippet is:
-```
-{code_snippet}
-```
-"""
-    response = process_message(user_message=user_message, metadata={"code": code_snippet, "path": file_path})
+    # Get the user message from the prompts file
+    user_message = get_user_message(code_snippet)
+    
+    # Process the message with the agent
+    metadata = {"code": code_snippet, "path": file_path} if file_path else {"code": code_snippet}
+    response = process_message(user_message=user_message, metadata=metadata)
+    
+    # Extract the documentation from the response
     if "<documentation>" in response:
         documentation = response.split("<documentation>")[1].split("</documentation>")[0].strip()
     else:
         documentation = response
+    
     return documentation
 
 def main():
@@ -143,7 +154,9 @@ def dot_product(v1: Vec, v2: Vec) -> int:
         ans += v1[i] * v2[i]
     return ans
 """
-    print('Documentation:')
+    print('Original Code Snippet:')
+    print(code_snippet)
+    print('\nGenerated Documentation:')
     documentation = generate_documentation(code_snippet)
     print(documentation)
     
