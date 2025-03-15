@@ -10,7 +10,7 @@ from moya.orchestrators.simple_orchestrator import SimpleOrchestrator
 from moya.agents.azure_openai_agent import AzureOpenAIAgent, AzureOpenAIAgentConfig
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from src.prompts.document_code import SYSTEM_PROMPT
+from src.prompts.document_code import get_system_prompt
 
 def create_agent():
     """
@@ -29,7 +29,7 @@ def create_agent():
         model_name="gpt-4o",
         agent_type="ChatAgent",
         tool_registry=tool_registry,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=get_system_prompt(),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_version=os.getenv("AZURE_OPENAI_API_VERSION") or "2024-12-01-preview",
