@@ -72,13 +72,13 @@ name = "hackiiit"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "moya-ai", extra = ["openai"] },
+    { name = "moya-ai" },
     { name = "openai" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "moya-ai", extras = ["openai"], git = "https://github.com/montycloud/moya.git" },
+    { name = "moya-ai", git = "https://github.com/vishesh312/moya?branch=tool-call-fix" },
     { name = "openai", specifier = ">=1.66.3" },
 ]
 
@@ -169,12 +169,7 @@ wheels = [
 [[package]]
 name = "moya-ai"
 version = "0.1.5"
-source = { git = "https://github.com/montycloud/moya.git#0b781fe2259bc9247e93f35820ded5de7a663246" }
-
-[package.optional-dependencies]
-openai = [
-    { name = "openai" },
-]
+source = { git = "https://github.com/vishesh312/moya?branch=tool-call-fix#2fa6d6874ce310b55a5af3fcb337c9285bf3869d" }
 
 [[package]]
 name = "openai"
