@@ -5,5 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "moya-ai>=0.1.3",
+    "moya-ai",
 ]
+
+[tool.uv.sources]
+moya-ai = { git = "https://github.com/vishesh312/moya" }
