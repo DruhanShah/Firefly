@@ -3,14 +3,13 @@ Flask app for the agent UI.
 """
 
 import os
-import json
 import threading
 import queue
 import time
 import subprocess
 import uuid
 import shutil
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
+from flask import Flask, render_template, request, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
