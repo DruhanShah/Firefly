@@ -22,25 +22,38 @@
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="process_type" id="code_generation" value="code_generation" {% if process_type == 'code_generation' %}checked{% endif %}>
                     <label class="form-check-label" for="code_generation">
-                        Generate Code from Documentation
+                        Generate Code from Documentation & Examples
                     </label>
                 </div>
             </div>
 
             {% if process_type == 'documentation' or process_type is none %}
             <div class="mb-3">
-                <label for="code" class="form-label">Upload Code Archive:</label>
-                <input type="file" class="form-control" name="code">
+                <label for="code_archive" class="form-label">Upload Code Archive:</label>
+                <input type="file" class="form-control" name="code_archive">
                 <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing your code (max 1 GiB).</div>
             </div>
             {% endif %}
 
             {% if process_type == 'code_generation' %}
             <div class="mb-3">
-                <label for="documentation" class="form-label">Documentation:</label>
-                <input type="file" class="form-control" name="documentation">
-                <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing your documentation (max 1 GiB).</div>
+                <label for="prompt" class="form-label">Prompt:</label>
+                <textarea class="form-control" name="prompt" rows="3" required></textarea>
+                <div class="form-text">Enter a prompt for code generation.</div>
             </div>
+
+            <div class="mb-3">
+                <label for="examples_archive" class="form-label">Upload Examples Archive (Optional):</label>
+                <input type="file" class="form-control" name="examples_archive">
+                <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing code examples (max 1 GiB).</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="documentation_archive" class="form-label">Upload Documentation Archive (Optional but Recommended):</label>
+                <input type="file" class="form-control" name="documentation_archive">
+                <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing Markdown documentation (max 1 GiB).</div>
+            </div>
+
             {% endif %}
 
             <button type="submit" class="btn btn-primary">Submit</button>

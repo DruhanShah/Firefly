@@ -18,12 +18,13 @@ from moya.orchestrators.simple_orchestrator import SimpleOrchestrator
 from moya.agents.azure_openai_agent import AzureOpenAIAgent, AzureOpenAIAgentConfig
 
 # For RAG capabilities
-from langchain_community.vectorstores import FAISS  # Change to FAISS from Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings  # Use HuggingFace embeddings
+from langchain_community.vectorstores import FAISS
+from langchain_openai import AzureOpenAIEmbeddings  # Updated import from langchain_openai
 from langchain_text_splitters import MarkdownTextSplitter, PythonCodeTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from src.prompts.generate_code import get_system_prompt, get_user_message
 
 class CodeGenerationRAG:
     """A class to handle RAG functionality for code generation."""
@@ -40,14 +41,14 @@ class CodeGenerationRAG:
         self.persist_directory = persist_directory or tempfile.mkdtemp()
         self.vectorstore = None
         
-        # Replace Azure OpenAI embeddings with a local embedding model
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        
-        # Use a lightweight local embedding model
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",
-            model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True}
+        # Use Azure OpenAI embeddings with text-embedding-3-small model
+        self.embeddings = AzureOpenAIEmbeddings(
+            azure_deployment="text-embedding-3-small",
+            openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION") or "2024-12-01-preview",
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            chunk_size=3000,  # Added chunk_size parameter
+            model="text-embedding-3-small"  # Explicitly specify the model
         )
     
     def load_documents(self) -> List[Document]:
@@ -95,9 +96,9 @@ class CodeGenerationRAG:
             raise ValueError("No valid documents found to create the vector store.")
         
         # Create specialized chunkers for different file types
-        markdown_splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=100)
-        python_splitter = PythonCodeTextSplitter(chunk_size=1000, chunk_overlap=100)
-        default_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        markdown_splitter = MarkdownTextSplitter(chunk_size=3000, chunk_overlap=100)
+        python_splitter = PythonCodeTextSplitter(chunk_size=3000, chunk_overlap=100)
+        default_splitter = RecursiveCharacterTextSplitter(chunk_size=3000, chunk_overlap=100)
         
         # Group documents by file type
         markdown_docs = []
@@ -122,7 +123,7 @@ class CodeGenerationRAG:
         if other_docs:
             chunks.extend(default_splitter.split_documents(other_docs))
         
-        # Create the vector store without persist_directory parameter
+        # Create the vector store with Azure embeddings
         self.vectorstore = FAISS.from_documents(
             documents=chunks,
             embedding=self.embeddings
@@ -137,7 +138,7 @@ class CodeGenerationRAG:
         # Print document types breakdown
         print(f"Document types: {len(markdown_docs)} Markdown, {len(python_docs)} Python, {len(other_docs)} Other")
     
-    def query_vectorstore(self, query: str, k: int = 5) -> List[Dict]:
+    def query_vectorstore(self, query: str, k: int = 10) -> List[Dict]:
         """
         Query the vector store for relevant documentation.
         
@@ -164,7 +165,7 @@ class CodeGenerationRAG:
                 "source": doc.metadata.get("source", "Unknown"),
                 "filename": doc.metadata.get("filename", "Unknown")
             })
-        
+        print("Results:", formatted_results)
         return formatted_results
 
 
@@ -246,12 +247,13 @@ def execute_python_code_tool():
     return execute_code
 
 
-def create_agent(vectorstore_instance):
+def create_agent(vectorstore_instance, example_context: str = ""):
     """
-    Create an Azure OpenAI agent for code generation using RAG.
+    Create an Azure OpenAI agent for code generation using RAG and example context.
     
     Args:
         vectorstore_instance: Instance of CodeGenerationRAG
+        example_context: String containing example file contexts
     
     Returns:
         tuple: A tuple containing the orchestrator and agent.
@@ -293,34 +295,20 @@ def create_agent(vectorstore_instance):
     )
     tool_registry.register_tool(execution_tool)
     
-    # Create agent configuration
+    # Enhance system prompt with example context if available
+    system_prompt = get_system_prompt()
+    if example_context:
+        system_prompt += f"\n\nEXAMPLE CODE FILES FOR REFERENCE:\n{example_context}"
+    
+    # Create agent configuration using the system prompt from the prompts file
     agent_config = AzureOpenAIAgentConfig(
         agent_name="code_generation_agent",
         description="An agent that generates code based on documentation and user requirements",
-        # model_name="o3-mini",
-        model_name="gpt-4o",
+        model_name="o3-mini",
+        # model_name="gpt-4o",
         agent_type="ChatAgent",
         tool_registry=tool_registry,
-        system_prompt="""
-        You are an expert code generation assistant. Your primary job is to generate high-quality, 
-        well-documented code based on user requirements.
-
-        Before generating code, you should always query the documentation database to understand 
-        the codebase better. Use the query_documentation tool to find relevant information.
-        
-        You can test code snippets using the execute_python tool to verify they work as expected.
-        This is especially useful for trying small examples before including them in your final solution.
-        
-        When generating code:
-        1. Use the documentation to understand the existing code patterns, conventions, and architecture
-        2. Follow the project's coding style and naming conventions
-        3. Include appropriate comments and docstrings
-        4. Handle errors and edge cases appropriately
-        5. Make your code modular and maintainable
-        6. Test critical parts using the execute_python tool to verify functionality
-        
-        Always wrap your code in a code block with the appropriate language identifier.
-        """,
+        system_prompt=system_prompt,
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_base=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_version=os.getenv("AZURE_OPENAI_API_VERSION") or "2024-12-01-preview",
@@ -341,20 +329,24 @@ def create_agent(vectorstore_instance):
     return orchestrator, agent
 
 
-def generate_code(prompt: str, vectorstore_instance, stream: bool = False):
+def generate_code(prompt: str, vectorstore_instance, example_context: str = "", stream: bool = False):
     """
-    Generate code based on the given prompt using documentation.
+    Generate code based on the given prompt using documentation and example files.
     
     Args:
         prompt (str): The prompt describing the code to generate
         vectorstore_instance: Instance of CodeGenerationRAG
+        example_context (str): String containing example file contexts
         stream (bool): Whether to stream the response
         
     Returns:
         str: The generated code
     """
-    orchestrator, _ = create_agent(vectorstore_instance)
-    thread_id = hashlib.md5(prompt.encode()).hexdigest()
+    # Get the formatted user message from the prompts file
+    user_message = get_user_message(prompt)
+    
+    orchestrator, _ = create_agent(vectorstore_instance, example_context)
+    thread_id = hashlib.md5(user_message.encode()).hexdigest()
     
     if stream:
         print("Assistant: ", end="", flush=True)
@@ -364,34 +356,71 @@ def generate_code(prompt: str, vectorstore_instance, stream: bool = False):
         
         response = orchestrator.orchestrate(
             thread_id=thread_id,
-            user_message=prompt,
+            user_message=user_message,
             stream_callback=stream_callback
         )
         print()  # Add a newline after the response
     else:
         response = orchestrator.orchestrate(
             thread_id=thread_id,
-            user_message=prompt
+            user_message=user_message
         )
     
     return response
 
 
+def load_files_into_context(file_paths: List[str]) -> str:
+    """
+    Load content from multiple files and create a context string.
+    
+    Args:
+        file_paths (List[str]): List of file paths to load
+        
+    Returns:
+        str: Combined content of all files with proper formatting
+    """
+    context = []
+    
+    for file_path in file_paths:
+        try:
+            # Handle absolute or relative paths
+            full_path = file_path
+            
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Add file content with proper markdown formatting
+            context.append(f"### File: {file_path}\n```python\n{content}\n```\n")
+        except Exception as e:
+            context.append(f"Error loading file {file_path}: {str(e)}")
+    
+    return "\n".join(context)
+
 class CodeGenerationAgent:
     """Agent for generating code based on documentation."""
     
-    def __init__(self, docs_paths: List[str], persist_directory: Optional[str] = None):
+    def __init__(self, docs_paths: List[str], example_files: Optional[List[str]] = None, persist_directory: Optional[str] = None):
         """
-        Initialize the code generation agent.
+        Initialize the code generation agent with both RAG for docs and direct context for examples.
         
         Args:
-            docs_paths: List of paths to markdown documentation files
+            docs_paths: List of paths to markdown documentation files for RAG
+            example_files: List of example files to include directly in context
             persist_directory: Directory to persist the vector database (optional)
         """
         self.rag = CodeGenerationRAG(docs_paths, persist_directory)
         print("Initializing RAG system and setting up vector store...")
         self.rag.setup_vectorstore()
         print("RAG system initialized and ready for code generation.")
+        
+        # Load example files into context
+        self.example_files = example_files or []
+        if self.example_files:
+            print(f"Loading {len(self.example_files)} example files into context...")
+            self.example_context = load_files_into_context(self.example_files)
+            print("Example files loaded into context.")
+        else:
+            self.example_context = ""
     
     def generate(self, prompt: str, stream: bool = False) -> str:
         """
@@ -404,7 +433,70 @@ class CodeGenerationAgent:
         Returns:
             The generated code
         """
-        return generate_code(prompt, self.rag, stream)
+        return generate_code(prompt, self.rag, self.example_context, stream)
+
+
+def generate_solution(problem_statement: str, docs_paths: List[str] = [], example_files: List[str] = []) -> str:
+    """
+    Generate a solution for a problem statement using the code generation agent.
+    
+    Args:
+        problem_statement: A description of the problem to solve
+        docs_paths: List of documentation files for RAG
+        example_files: List of example files to include in context
+        
+    Returns:
+        str: Extracted code from the agent's response, with markdown code blocks removed
+    """
+    # Create the agent with both RAG for documentation and example files for direct context
+    agent = CodeGenerationAgent(docs_paths, example_files)
+    print("agent initialised")
+    # Generate code using the agent
+    print("Generating solution...")
+    raw_output = agent.generate(problem_statement)
+    
+    # Extract code blocks from the output
+    extracted_code = ""
+    lines = raw_output.split('\n')
+    in_code_block = False
+    current_code_block = []
+    language = ""
+    
+    for line in lines:
+        # Detect the start of a code block
+        if line.startswith('```') and not in_code_block:
+            in_code_block = True
+            # Extract language if specified (```python)
+            if len(line) > 3:
+                language = line[3:].strip()
+            continue
+            
+        # Detect the end of a code block
+        elif line.startswith('```') and in_code_block:
+            # Add the completed code block with header
+            if current_code_block:
+                if language:
+                    extracted_code += f"# Code block - {language}\n"
+                extracted_code += '\n'.join(current_code_block) + '\n\n'
+                current_code_block = []
+                language = ""
+            in_code_block = False
+            continue
+            
+        # Collect lines inside code blocks
+        if in_code_block:
+            current_code_block.append(line)
+    
+    # In case there's an unclosed code block
+    if current_code_block:
+        if language:
+            extracted_code += f"# Code block - {language}\n"
+        extracted_code += '\n'.join(current_code_block) + '\n'
+    
+    if not extracted_code.strip():
+        return "No code blocks were found in the generated solution."
+    
+    return extracted_code
 
 
 def main():
@@ -420,6 +512,10 @@ def main():
         "docs/moya/tools/docs.md",
         "docs/moya/utils/docs.md",
         "docs/examples/docs.md",
+    ]
+    
+    # Example files to include directly in context
+    example_files = [
         "/Users/vishesh/Code/vishesh312-moya/moya/examples/quick_start_azure_openai.py",
         "/Users/vishesh/Code/vishesh312-moya/moya/examples/quick_start_openai.py",
         "/Users/vishesh/Code/vishesh312-moya/moya/examples/quick_start_multiagent.py",
@@ -430,27 +526,82 @@ def main():
         "/Users/vishesh/Code/vishesh312-moya/moya/examples/quick_tools.py",
         "/Users/vishesh/Code/vishesh312-moya/moya/examples/dynamic_agents.py",
     ]
-    # quick_start_bedrock.py           quick_start_multiagent_react.py  quick_tools.py
-# dynamic_agents.py                quick_start_crewai.py            quick_start_ollama.py            remote_agent_server.py
-# quick_start_azure_openai.py      quick_start_multiagent.py        quick_start_openai.py            remote_agent_server_with_auth.py
-    # Create the agent
-    agent = CodeGenerationAgent(docs_paths)
     
-    # Example prompt
-    prompt = """
-This is a challenge for a hackathon, write a program for this problem statement, it should use the moya library, for which code can be accessed using the available tool. Ensure that the output is in a single python file. You should use the Azure OpenAI API in the code. You should query for examples and documentation to understand the library better. Follow patterns from examples queried. You should make multiple queries to search about examples and documentation for each function or class that you are going to use. You will be penalised for using classes or functions without searching for their documentation or code example.
+    # Example problem statement
+    problem_statement = """
+Vision & Challenges
+The AI-Powered Virtual Band Jam Session is designed to recreate the energy and spontaneity of live music collaboration using multi-agent AI. Unlike traditional online music-making, which often relies on sequential recordings or fixed loops, this system leverages a network of AI-driven instrumentalists, conductors, and improvisers to create authentic, real-time jam sessions. Each AI agent listens, adapts, and improvises dynamically, allowing users to experience or participate in a truly interactive and evolving musical performance.
 
----
+Current Challenges
+Real-Time Synchronization
+Traditional online music collaboration faces latency and synchronization challenges that disrupt live performance.
 
-Write an agent for a calculator, it should take as input a mathematical expression and return the result. The agent should be able to handle basic arithmetic operations such as addition, subtraction, multiplication, and division. You can write tools for the agent as well. The agent should take natural language queries and be able to evaluate expression asked by the user. Example: "what is 4 time 3?" should return 12. Make sure while initialising the LLM you have all necessary parameters set. It should also be able to handle other natural language queries.
+Musical Adaptation
+Creating AI musicians that can genuinely listen, respond, and improvise in real-time requires sophisticated coordination.
+
+Style Versatility
+Supporting multiple musical genres and styles while maintaining authentic expression poses significant technical challenges.
+
+Multi-Agent Solution
+The system deploys a set of specialized AI agents, each responsible for a distinct musical role, ensuring expressive, dynamic, and harmonically rich jam sessions.
+
+Instrumentalist Agents
+Simulate musicians playing different instruments (guitar, drums, keyboard, bass), each with unique playing styles and improvisational patterns.
+
+Outcome
+Generate real-time, harmonically and rhythmically adaptive performances that respond to other agents and human musicians.
+Conductor/Interaction Manager Agent
+Oversees the entire performance, managing transitions, tempo shifts, and interplay between instrumentalist agents.
+
+Outcome
+Ensures cohesion, energy balance, and smooth synchronization between AI and human musicians.
+Improvisation and Adaptation Agent
+Introduces spontaneous melodic and rhythmic variations, responding to the evolving jam session.
+
+Outcome
+Keeps performances fresh, dynamic, and engaging, preventing repetitive patterns.
+Audience Interaction Agent
+Allows users to shape the session by suggesting themes, triggering solos, or interacting with the AI band through inputs.
+
+Outcome
+Turns passive listening into an interactive and participatory experience.
+Feedback and Learning Agent
+Captures session data, user interactions, and feedback to refine agent behaviors and musical responsiveness.
+
+Outcome
+Continuously enhances the expressiveness and adaptability of AI musicians over time.
+Impact & Future
+By leveraging multi-agent AI collaboration, the AI-Powered Virtual Band Jam Session redefines how musicians and audiences experience live music in digital spaces. It enables improvised, expressive, and interactive musical performances, making AI-driven jam sessions as engaging and unpredictable as live human collaborations.
+
+Future Expansions
+Augmented Reality (AR) Jam Sessions
+AR Integration Agent adds visual overlays and virtual stage elements
+
+Outcome
+Expands the interaction model, making AI-driven music more immersive and visually engaging.
+Collaborative Jam Spaces
+Multi-User Collaboration Agent enables remote musicians to join with AI-assisted instruments
+
+Outcome
+Facilitates virtual bands where musicians can experiment and compose music together across distances.
+Genre-Specific Modes
+Customization Agent enables selection of musical genres and styles
+
+Outcome
+Provides highly personalized and genre-accurate improvisation, catering to different musical tastes.
+Live Performance Recording and Sharing
+Recording and Analytics Agent captures and enhances jam sessions
+
+Outcome
+Encourages content creation, skill-building, and community-driven collaboration in AI-powered music performance.
+
 """
     
-    # Generate code
-    print("Generating code for the prompt...")
-    code = agent.generate(prompt, stream=True)
-    print("\nGenerated code:")
-    print(code)
-    open('generated.md', 'w').write(code)
+    # Generate solution
+    solution = generate_solution(problem_statement, docs_paths, example_files)
+    print("\nGenerated solution:")
+    print(solution)
+    open('generated_solution.py', 'w').write(solution)
 
 
 if __name__ == "__main__":
