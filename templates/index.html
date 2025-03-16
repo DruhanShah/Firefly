@@ -3,27 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Run Custom Code</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> <!-- Custom CSS -->
+    <title>Code Tools</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h1>Run Custom Code</h1>
-        {% if error %}
-            <div class="alert alert-danger" role="alert">
-                {{ error }}
-            </div>
-        {% endif %}
+    <div class="container mt-5">
+        <h1>Code Documentation & Generation</h1>
+
         <form method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="directory">Upload Directory (as ZIP):</label>
-                <input type="file" class="form-control-file" id="directory" name="directory">
+            <div class="mb-3">
+                <label class="form-label">Process Type:</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="process_type" id="documentation" value="documentation" {% if process_type == 'documentation' %}checked{% endif %}>
+                    <label class="form-check-label" for="documentation">
+                        Generate Documentation from Code
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="process_type" id="code_generation" value="code_generation" {% if process_type == 'code_generation' %}checked{% endif %}>
+                    <label class="form-check-label" for="code_generation">
+                        Generate Code from Documentation
+                    </label>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary">Run</button>
+
+            {% if process_type == 'documentation' or process_type is none %}
+            <div class="mb-3">
+                <label for="code" class="form-label">Upload Code Archive:</label>
+                <input type="code" class="form-control" name="code">
+                <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing your code (max 1 GiB).</div>
+            </div>
+            {% endif %}
+
+            {% if process_type == 'code_generation' %}
+            <div class="mb-3">
+                <label for="documentation" class="form-label">Documentation:</label>
+                <textarea class="form-control" name="documentation" rows="5"></textarea>
+                <div class="form-text">Enter the documentation to generate code from.</div>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary">Submit</button>
         </form>
-        <hr>
-        <p><a href="{{ url_for('about') }}">About</a></p>
+
+        {% if error %}
+        <div class="alert alert-danger mt-3" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,128 +1,197 @@
 import os
 import subprocess
+import uuid
 import shutil
-import tempfile
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# Configuration (adjust as needed)
+# Configuration
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'py', 'txt', 'js', 'html', 'css', 'md'}
-MAX_CONTENT_LENGTH = 1024 * 1024 * 1024
+OUTPUT_FOLDER = 'outputs'
+ALLOWED_EXTENSIONS = {'zip', 'tar', 'gz', 'tgz', 'tar.gz'}  # Add more if needed
+MAX_CONTENT_LENGTH = 1024 * 1024 * 1024  # 1 GiB
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))  # Project root
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Create directories if they don't exist
+os.makedirs(os.path.join(APP_ROOT, UPLOAD_FOLDER), exist_ok=True)
+os.makedirs(os.path.join(APP_ROOT, OUTPUT_FOLDER), exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = os.path.join(APP_ROOT, UPLOAD_FOLDER)
+app.config['OUTPUT_FOLDER'] = os.path.join(APP_ROOT, OUTPUT_FOLDER)
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-# Ensure the upload folder exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Error handling
+app.config['TRAP_BAD_REQUEST_ERRORS'] = True
+app.config['TRAP_HTTP_EXCEPTIONS'] = True
 
 
 def allowed_file(filename):
-    """Check if a file extension is allowed."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def run_custom_code(directory_path):
+def run_main_script(process_type, input_dir, output_dir, documentation_dir=""):
+    """
+    Runs main.py with arguments based on the process type.
+    Captures stdout and stderr. Handles errors.
+    """
     try:
-        original_cwd = os.getcwd()
-        os.chdir(directory_path)
+        command = ['python', 'main.py']  # Base command
+        if process_type == 'documentation':
+            command.extend(['--mode', 'documentation', '--input_dir', input_dir, '--output_dir', output_dir])
+        elif process_type == 'code_generation':
+            command.extend(['--mode', 'code_generation', '--documentation_dir', documentation_dir, '--output_dir', output_dir])
+        else:
+            return 1, "", "Error: Invalid process type."
 
-        if not os.path.exists("main.py"):
-            return None 
-
-        process = subprocess.Popen(['python', 'main.py'],
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=APP_ROOT)
         stdout, stderr = process.communicate()
+
         return_code = process.returncode
 
-        stdout = stdout.decode('utf-8', errors='ignore') if stdout else ""
-        stderr = stderr.decode('utf-8', errors='ignore') if stderr else ""
+        stdout_decoded = stdout.decode('utf-8', errors='ignore')
+        stderr_decoded = stderr.decode('utf-8', errors='ignore')
+
+        return return_code, stdout_decoded, stderr_decoded
 
     except FileNotFoundError:
-        return None
+        return 1, "", "Error: main.py not found in the application root directory."
     except Exception as e:
-        return None
+        return 1, "", f"An unexpected error occurred: {str(e)}"
+
+
+def process_file(process_type, code_dir=None, documentation_dir=None):
+    """Handles the common logic for both documentation and code generation."""
+    unique_id = str(uuid.uuid4())
+    output_dir = os.path.join(app.config['OUTPUT_FOLDER'], unique_id + "_output")
+    os.makedirs(output_dir, exist_ok=True)
+
+    try:
+        return_code, stdout, stderr = run_main_script(process_type, code_dir, output_dir, documentation_dir)
+
+        if return_code == 0:
+            output_archive_path = os.path.join(
+                app.config['OUTPUT_FOLDER'],
+                f"{unique_id}_output.zip"
+            )
+            shutil.make_archive(os.path.join(
+                app.config['OUTPUT_FOLDER'],
+                f"{unique_id}_output"
+            ), 'zip', output_dir)
+
+            return render_template(
+                'result.html',
+                stderr=stderr,
+                output_archive=f"{unique_id}_output.zip"
+            )
+        else:
+            return render_template(
+                'index.html',
+                error=f"Error running main.py ({process_type}). Return code: {return_code}. Stderr: {stderr}. Stdout: {stdout}",
+                process_type=process_type
+            )
+
+
+    except Exception as e:
+        return render_template(
+            'index.html',
+            error=f"Error processing file: {str(e)}",
+            process_type=process_type
+        )
     finally:
-        os.chdir(original_cwd)
-    return stdout, stderr, return_code
+        if code_dir:
+            try:
+                shutil.rmtree(code_dir)
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                print(f"Error during cleanup: {e}")
+        if documentation_dir:
+            try:
+                shutil.rmtree(documentation_dir)
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                print(f"Error during cleanup: {e}")
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    """Handles the main page with the directory input form."""
     if request.method == 'POST':
-        if 'directory' not in request.files:
-            return render_template('index.html', error='No directory part')
+        process_type = request.form.get('process_type')
+        input_type = "code" if process_type == 'documentation' else "documentation"
+        affix = "code" if process_type == 'documentation' else "docs"
 
-        directory = request.files['directory']
+        if f'{input_type}_archive' not in request.files:
+            return render_template(
+                'index.html',
+                error=f'No {input_type} archive file part',
+                process_type=process_type
+            )
 
-        if directory.filename == '':
-            return render_template('index.html', error='No directory selected')
-        temp_dir = tempfile.mkdtemp(dir=app.config['UPLOAD_FOLDER'])
+        code_archive = request.files[f'{input_type}_archive']
 
-        try:
-            directory.save(os.path.join(temp_dir, directory.filename))
-            shutil.unpack_archive(os.path.join(temp_dir, directory.filename), temp_dir)
+        if code_archive.filename == '':
+            return render_template(
+                'index.html',
+                error=f'No {input_type} archive file selected',
+                process_type=process_type
+            )
 
-            # Find the actual directory within the extracted files (if it's nested)
-            extracted_dir = None
-            for item in os.listdir(temp_dir):
-                item_path = os.path.join(temp_dir, item)
-                if os.path.isdir(item_path):
-                    extracted_dir = item_path
-                    break
+        if code_archive and allowed_file(code_archive.filename):
+            unique_id = str(uuid.uuid4())
+            code_archive_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{affix}_" + secure_filename(code_archive.filename))
+            code_archive.save(code_archive_path)
 
+            code_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{unique_id}_{affix}")
+            os.makedirs(code_dir, exist_ok=True)
 
-            if extracted_dir is None:
-                return render_template(
-                    'index.html',
-                    error='No directory found in archive.'
-                )
+            shutil.unpack_archive(code_archive_path, code_dir)
+            os.remove(code_archive_path)
 
-            result = run_custom_code(extracted_dir)
+            return process_file(process_type, code_dir=code_dir)
+        else:
+            return render_template(
+                'index.html',
+                error='Invalid archive file type. Allowed types: ' + ', '.join(ALLOWED_EXTENSIONS),
+                process_type=process_type
+            )
 
-            if result:
-                stdout, stderr, return_code = result
-                return render_template(
-                    'result.html',
-                    stdout=stdout,
-                    stderr=stderr,
-                    return_code=return_code
-                )
-            else:
-                return render_template(
-                    'index.html',
-                    error='Error executing custom code. Check server logs.'
-                )
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return render_template('index.html', error=f'An error occurred: {e}')
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+    return render_template(
+        'index.html',
+        error=None,
+        process_type=None
+    )
 
 
-    return render_template('index.html', error=None)
-
-
-@app.route('/uploads/<name>')
-def download_file(name):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], name)
-
-
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
+@app.route('/download/<filename>')
+def download_file(filename):
+    return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
     return render_template(
         'index.html',
-        error='File size too large.  Maximum size is 16MB.'
+        error='File too large. Maximum size is 1 GiB.',
+        process_type=request.form.get('process_type')
     ), 413
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template(
+        'error.html',
+        error="Internal Server Error.  Check the server logs."
+    ), 500
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template(
+        'error.html',
+        error="Page Not Found."
+    ), 404
+
 
 
 if __name__ == '__main__':
