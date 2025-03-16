@@ -18,8 +18,8 @@ from moya.orchestrators.simple_orchestrator import SimpleOrchestrator
 from moya.agents.azure_openai_agent import AzureOpenAIAgent, AzureOpenAIAgentConfig
 
 # For RAG capabilities
-from langchain_community.vectorstores import FAISS  # Change to FAISS from Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings  # Use HuggingFace embeddings
+from langchain_community.vectorstores import FAISS
+from langchain_openai import AzureOpenAIEmbeddings  # Updated import from langchain_openai
 from langchain_text_splitters import MarkdownTextSplitter, PythonCodeTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
@@ -40,14 +40,14 @@ class CodeGenerationRAG:
         self.persist_directory = persist_directory or tempfile.mkdtemp()
         self.vectorstore = None
         
-        # Replace Azure OpenAI embeddings with a local embedding model
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        
-        # Use a lightweight local embedding model
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",
-            model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True}
+        # Use Azure OpenAI embeddings with text-embedding-3-small model
+        self.embeddings = AzureOpenAIEmbeddings(
+            azure_deployment="text-embedding-3-small",
+            openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION") or "2024-12-01-preview",
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            chunk_size=1000,  # Added chunk_size parameter
+            model="text-embedding-3-small"  # Explicitly specify the model
         )
     
     def load_documents(self) -> List[Document]:
@@ -122,7 +122,7 @@ class CodeGenerationRAG:
         if other_docs:
             chunks.extend(default_splitter.split_documents(other_docs))
         
-        # Create the vector store without persist_directory parameter
+        # Create the vector store with Azure embeddings
         self.vectorstore = FAISS.from_documents(
             documents=chunks,
             embedding=self.embeddings
@@ -297,8 +297,8 @@ def create_agent(vectorstore_instance):
     agent_config = AzureOpenAIAgentConfig(
         agent_name="code_generation_agent",
         description="An agent that generates code based on documentation and user requirements",
-        # model_name="o3-mini",
-        model_name="gpt-4o",
+        model_name="o3-mini",
+        # model_name="gpt-4o",
         agent_type="ChatAgent",
         tool_registry=tool_registry,
         system_prompt="""
@@ -438,11 +438,75 @@ def main():
     
     # Example prompt
     prompt = """
-This is a challenge for a hackathon, write a program for this problem statement, it should use the moya library, for which code can be accessed using the available tool. Ensure that the output is in a single python file. You should use the Azure OpenAI API in the code. You should query for examples and documentation to understand the library better. Follow patterns from examples queried. You should make multiple queries to search about examples and documentation for each function or class that you are going to use. You will be penalised for using classes or functions without searching for their documentation or code example.
+This is a challenge for a hackathon, write a program for this problem statement, it should use the moya library. Ensure that the output is in a single python file. You should use the Azure OpenAI API in the code. Make sure to examine example files to understand how to use the library properly.
 
 ---
 
-Write an agent for a calculator, it should take as input a mathematical expression and return the result. The agent should be able to handle basic arithmetic operations such as addition, subtraction, multiplication, and division. You can write tools for the agent as well. The agent should take natural language queries and be able to evaluate expression asked by the user. Example: "what is 4 time 3?" should return 12. Make sure while initialising the LLM you have all necessary parameters set. It should also be able to handle other natural language queries.
+Vision & Challenges
+Mental health support is deeply personal and requires consistent, empathetic, and structured guidance. However, accessing professional help can be difficult due to stigma, cost, and availability. The AI-Powered Personalized Mental Health Coach is designed to act as an intelligent, confidential, and supportive companion, helping individuals navigate their emotional well-being with real-time guidance, structured reflection, and tailored recommendations.
+
+Current Challenges
+Personal Support at Scale
+Providing individualized mental health support while maintaining empathy and effectiveness at scale.
+
+Privacy & Trust
+Ensuring absolute confidentiality and building trust while handling sensitive personal information.
+
+Professional Integration
+Balancing AI support with appropriate escalation to human mental health professionals when needed.
+
+Multi-Agent Solution
+The system employs multiple specialized AI agents, each designed to support different aspects of emotional well-being and personal growth.
+
+Active Listening & Emotional Reflection Agent
+Engages users in structured, empathetic conversations, helping them process thoughts and emotions.
+
+Outcome
+Provides a safe, judgment-free space for individuals to express feelings and gain clarity.
+Guided Coping & Resilience Agent
+Suggests evidence-based coping strategies, such as mindfulness exercises, reframing techniques, and breathing exercises.
+
+Outcome
+Empowers users with actionable tools to manage stress, anxiety, and emotional distress.
+Multi-Disciplinary Advisory Agent
+Collaborates with specialized AI agents in psychology, wellness, career coaching, and behavioral health.
+
+Outcome
+Offers contextualized, multi-angle support that adapts to a user's evolving mental health journey.
+Privacy & Ethical Safeguard Agent
+Ensures that all interactions remain private and secure, preventing any personally identifiable information from being shared.
+
+Outcome
+Builds trust and reliability, allowing users to engage without concerns about data security.
+Local Support & Resource Navigation Agent
+Identifies mental health NGOs, crisis helplines, and community-based support programs based on location and needs.
+
+Outcome
+Provides real-world support options when professional intervention is necessary.
+Impact & Future
+By serving as a trusted, always-available companion, the AI coach helps individuals build emotional resilience while maintaining strict confidentiality and user control over their data.
+
+Future Expansions
+Emotionally Aware Conversations
+Sentiment & Tone Analysis Agent adapts responses to user state
+
+Outcome
+Makes interactions more personalized, supportive, and contextually relevant.
+Interactive Therapeutic Exercises
+Self-Guided Therapy Agent offers CBT-inspired exercises
+
+Outcome
+Empowers individuals with practical mental health techniques for self-improvement.
+AI-Powered Journaling
+Personal Growth Agent helps track emotional patterns
+
+Outcome
+Acts as a digital self-coach, reinforcing emotional resilience through reflection.
+Cultural Awareness Expansion
+Cross-Cultural Adaptation Agent tailors support globally
+
+Outcome
+Expands access to diverse populations with culturally appropriate support.
 """
     
     # Generate code

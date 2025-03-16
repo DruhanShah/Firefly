@@ -18,7 +18,6 @@ def setup_agents():
     # Active Listening & Emotional Reflection Agent
     active_listening_config = AzureOpenAIAgentConfig(
         agent_name="active_listening",
-        agent_type="ChatAgent",
         description="Active Listening & Emotional Reflection Agent",
         system_prompt="""You are an active listening agent.
 Engage users empathetically and help them process their emotions by reflecting and asking structured, validating questions.
@@ -34,7 +33,6 @@ Provide non-judgmental and supportive responses.""",
     # Guided Coping & Resilience Agent
     guided_coping_config = AzureOpenAIAgentConfig(
         agent_name="guided_coping",
-        agent_type="ChatAgent",
         description="Guided Coping & Resilience Agent",
         system_prompt="""You are a guided coping agent.
 Provide users with evidence-based coping strategies such as mindfulness exercises, deep breathing, and reframing techniques.
@@ -50,7 +48,6 @@ Offer clear and actionable steps to help manage stress and anxiety.""",
     # Multi-Disciplinary Advisory Agent
     multidisciplinary_config = AzureOpenAIAgentConfig(
         agent_name="multidisciplinary_advisory",
-        agent_type="ChatAgent",
         description="Multi-Disciplinary Advisory Agent",
         system_prompt="""You are a multi-disciplinary advisory agent.
 Provide holistic guidance integrating insights from psychology, career coaching, wellness, and behavioral health.
@@ -66,7 +63,6 @@ Offer balanced advice across different aspects of the user's personal and profes
     # Privacy & Ethical Safeguard Agent
     privacy_safeguard_config = AzureOpenAIAgentConfig(
         agent_name="privacy_safeguard",
-        agent_type="ChatAgent",
         description="Privacy & Ethical Safeguard Agent",
         system_prompt="""You are a privacy safeguard agent.
 Ensure that all interactions are kept strictly confidential.
@@ -83,7 +79,6 @@ Politely remind users about the importance of data security when necessary.""",
     # Local Support & Resource Navigation Agent
     local_support_config = AzureOpenAIAgentConfig(
         agent_name="local_support",
-        agent_type="ChatAgent",
         description="Local Support & Resource Navigation Agent",
         system_prompt="""You are a local support agent.
 Provide users with local mental health resources, such as NGO contacts, crisis helplines, and community-based support options.
@@ -117,7 +112,6 @@ Return only the agent name.
 """
     classifier_config = AzureOpenAIAgentConfig(
         agent_name="classifier",
-        agent_type="ClassifierAgent",
         description="Classifier Agent for routing messages to mental health support agents",
         system_prompt=classifier_system_prompt,
         model_name="gpt-4o",
