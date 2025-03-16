@@ -530,70 +530,70 @@ def main():
     # Example problem statement
     problem_statement = """
 Vision & Challenges
-Traditional storytelling is static, predictable, and often limited by pre-scripted choices. The AI-Driven Interactive Storytelling Adventure redefines the narrative experience by using multi-agent AI to create evolving, immersive, and player-driven stories, where every decision shapes the world, characters, and ultimate outcome. This real-time, AI-powered storytelling engine adapts dynamically to user choices, generates new characters, conflicts, and branching narratives in real time, and blends multiple genres into seamless, AI-crafted adventures tailored to the player's preferences.
+The AI-Powered Virtual Band Jam Session is designed to recreate the energy and spontaneity of live music collaboration using multi-agent AI. Unlike traditional online music-making, which often relies on sequential recordings or fixed loops, this system leverages a network of AI-driven instrumentalists, conductors, and improvisers to create authentic, real-time jam sessions. Each AI agent listens, adapts, and improvises dynamically, allowing users to experience or participate in a truly interactive and evolving musical performance.
 
 Current Challenges
-Static Storytelling
-Traditional storytelling relies on predetermined scripts, limiting spontaneity and player agency.
+Real-Time Synchronization
+Traditional online music collaboration faces latency and synchronization challenges that disrupt live performance.
 
-Limited Adaptation
-Existing systems struggle to create truly dynamic narratives that meaningfully respond to player choices.
+Musical Adaptation
+Creating AI musicians that can genuinely listen, respond, and improvise in real-time requires sophisticated coordination.
 
-Genre Integration
-Blending different genres while maintaining narrative coherence and engagement poses significant challenges.
+Style Versatility
+Supporting multiple musical genres and styles while maintaining authentic expression poses significant technical challenges.
 
 Multi-Agent Solution
-The system employs specialized AI agents, each responsible for different aspects of dynamic storytelling, ensuring a cohesive, engaging, and ever-evolving narrative.
+The system deploys a set of specialized AI agents, each responsible for a distinct musical role, ensuring expressive, dynamic, and harmonically rich jam sessions.
 
-Story Architect & World Builder Agent
-Constructs the core setting, historical lore, and major world events that serve as the foundation of the player's adventure.
-
-Outcome
-Ensures the world feels expansive, interconnected, and alive, adapting to user-driven actions.
-Character Generation & Adaptation Agent
-Creates and evolves non-playable characters (NPCs) with unique personalities, backstories, and evolving relationships.
+Instrumentalist Agents
+Simulate musicians playing different instruments (guitar, drums, keyboard, bass), each with unique playing styles and improvisational patterns.
 
 Outcome
-Ensures authentic, dynamic character interactions that feel personalized and responsive.
-Dynamic Conflict & Challenge Agent
-Introduces obstacles, moral dilemmas, and plot twists based on player choices, creating a sense of urgency and consequence.
+Generate real-time, harmonically and rhythmically adaptive performances that respond to other agents and human musicians.
+Conductor/Interaction Manager Agent
+Oversees the entire performance, managing transitions, tempo shifts, and interplay between instrumentalist agents.
 
 Outcome
-Maintains engagement by balancing tension, unpredictability, and meaningful decision-making.
-Dialogue & Response Agent
-Generates natural, evolving dialogue that adapts to user tone, past interactions, and character arcs.
+Ensures cohesion, energy balance, and smooth synchronization between AI and human musicians.
+Improvisation and Adaptation Agent
+Introduces spontaneous melodic and rhythmic variations, responding to the evolving jam session.
 
 Outcome
-Enables rich, lifelike conversations that feel spontaneous and emotionally resonant.
-Narrative Memory & Progression Agent
-Tracks player decisions, past interactions, and evolving relationships to ensure long-term narrative consistency.
+Keeps performances fresh, dynamic, and engaging, preventing repetitive patterns.
+Audience Interaction Agent
+Allows users to shape the session by suggesting themes, triggering solos, or interacting with the AI band through inputs.
 
 Outcome
-Ensures that past choices carry weight, influencing future events and character reactions.
+Turns passive listening into an interactive and participatory experience.
+Feedback and Learning Agent
+Captures session data, user interactions, and feedback to refine agent behaviors and musical responsiveness.
+
+Outcome
+Continuously enhances the expressiveness and adaptability of AI musicians over time.
 Impact & Future
-By leveraging multi-agent AI to craft deeply interactive, personalized, and ever-evolving adventures, this system turns users into co-creators of their own epic sagas. Whether unraveling a cosmic mystery, navigating ancient myths, or shaping a futuristic utopia, every decision matters—and every adventure is unique.
+By leveraging multi-agent AI collaboration, the AI-Powered Virtual Band Jam Session redefines how musicians and audiences experience live music in digital spaces. It enables improvised, expressive, and interactive musical performances, making AI-driven jam sessions as engaging and unpredictable as live human collaborations.
 
 Future Expansions
-Voice-Activated & Performance-Based Storytelling
-AI-Driven Voice Acting Agent generates fully voiced, adaptive dialogue
+Augmented Reality (AR) Jam Sessions
+AR Integration Agent adds visual overlays and virtual stage elements
 
 Outcome
-Creates a cinematic, immersive storytelling experience where players feel like they are part of a living, breathing world.
-Multi-Player Collaborative Story Creation
-Shared Universe Agent allows multiple players to collaboratively shape a story together
+Expands the interaction model, making AI-driven music more immersive and visually engaging.
+Collaborative Jam Spaces
+Multi-User Collaboration Agent enables remote musicians to join with AI-assisted instruments
 
 Outcome
-Turns interactive storytelling into a co-op experience, where different perspectives drive the unfolding narrative.
-Cross-Media Integration & World Expansion
-Transmedia Storytelling Agent adapts AI-generated stories into different formats
+Facilitates virtual bands where musicians can experiment and compose music together across distances.
+Genre-Specific Modes
+Customization Agent enables selection of musical genres and styles
 
 Outcome
-Enables users to export and share their personalized adventures across different media formats.
-Personalized Learning & Skill-Building
-Educational Story Agent integrates educational elements into narratives
+Provides highly personalized and genre-accurate improvisation, catering to different musical tastes.
+Live Performance Recording and Sharing
+Recording and Analytics Agent captures and enhances jam sessions
 
 Outcome
-Transforms storytelling into a learning experience, making history, ethics, and critical thinking more engaging.
+Encourages content creation, skill-building, and community-driven collaboration in AI-powered music performance.
 
 """
     
