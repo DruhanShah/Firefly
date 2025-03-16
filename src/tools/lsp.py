@@ -1,20 +1,20 @@
-# from src.lsp import get_code
+import src.lsp.interactions as lsp_interactions
 from typing import Callable, Dict, Any
 
-def get_code(file_path, symbol_name, project_dir):
-    if symbol_name == "Vec":
-        return """class Vec:
-def __init__(self, n, list_of_values=None):
-    self.n = n
-    self.values = list_of_values or [0] * n
-def __repr__(self):
-    return f"Vec({self.n}, {self.values})"
-def __getitem__(self, i):
-    return self.values[i]
-def __setitem__(self, i, val):
-    self.values[i] = val
-"""
-    return None
+# def get_code(file_path, symbol_name, project_dir):
+#     if symbol_name == "Vec":
+#         return """class Vec:
+# def __init__(self, n, list_of_values=None):
+#     self.n = n
+#     self.values = list_of_values or [0] * n
+# def __repr__(self):
+#     return f"Vec({self.n}, {self.values})"
+# def __getitem__(self, i):
+#     return self.values[i]
+# def __setitem__(self, i, val):
+#     self.values[i] = val
+# """
+#     return None 
 
 def lsp_tool_definition(metadata: Dict[str, Any] | None) -> Callable:
     """
@@ -43,7 +43,7 @@ def lsp_tool_definition(metadata: Dict[str, Any] | None) -> Callable:
         project_dir = metadata.get("project_dir")
         if file_path is None or project_dir is None:
             return "No file path or project_dir provided (metadata not setup correctly)."
-        result = get_code(file_path, symbol_name, project_dir)
+        result = lsp_interactions.get_code(file_path, symbol_name, project_dir)
         if result is None:
             return f"Symbol '{symbol_name}' not found in the code snippet at row {row} and column {col}. Please ensure the symbol exists and the row and column are correct and try again."
         return result
