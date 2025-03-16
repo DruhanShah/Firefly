@@ -6,9 +6,8 @@ import sys
 from pathlib import Path
 
 # Import helper modules from the src.agent module
-from src.agent.format_docs import format_docs_directory
-from src.agent.generate_code import CodeGenerationAgent
-from src.agent.generate_documentation import generate_documentation
+from src import write_docs_for_directory
+from src import generate_solution
 
 
 def main():
@@ -88,15 +87,14 @@ def main():
             print(f"Error: Output directory {output_dir} is not a directory.")
             sys.exit(1)
 
-        success_count, failed_count = format_docs_directory(codebase_dir, output_dir) # Modified call.
+        write_docs_for_directory(codebase_dir, output_dir)
 
-        print(
-            f"Documentation formatting completed. Successfully formatted {success_count} files. Failed to format {failed_count} files."
-        )
+        print(f"Documentation generation completed.")
 
     elif args.mode == "code":
         # Code generation mode
         docs_paths = []
+        egs_paths = []
         output_dir = args.output_dir
 
         if not args.docs_dir.exists() or not args.docs_dir.is_dir():
@@ -125,7 +123,7 @@ def main():
                 for root, _, files in os.walk(str(args.examples_dir)):
                     for file in files:
                         if file.endswith(".py"):
-                            docs_paths.append(str(Path(root) / file))
+                            egs_paths.append(str(Path(root) / file))
             else:
                 print(f"Warning: Examples directory {args.examples_dir} does not exist or is not a directory.")
 
@@ -135,11 +133,7 @@ def main():
             print("Warning: No documentation files found in the specified directory. Code generation might be less effective.")
 
         # Create the agent and generate the code
-        agent = CodeGenerationAgent(docs_paths)
-        generated_code = agent.generate(problem_statement, stream=True)
-
-        print("\nGenerated Code:")
-        print(generated_code)
+        generated_code = generate_solution(problem_statement. docs_paths, egs_paths)
 
         # Save the generated code to a file in the output directory
         output_file = output_dir / "generated_code.py"
