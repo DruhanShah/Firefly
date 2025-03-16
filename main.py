@@ -133,7 +133,7 @@ def main():
             print("Warning: No documentation files found in the specified directory. Code generation might be less effective.")
 
         # Create the agent and generate the code
-        generated_code = generate_solution(problem_statement. docs_paths, egs_paths)
+        generated_code = generate_solution(problem_statement, docs_paths, egs_paths)
 
         # Save the generated code to a file in the output directory
         output_file = output_dir / "generated_code.py"
