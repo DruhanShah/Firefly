@@ -6,7 +6,7 @@ This also writes code to solve problems, given simple example programs and docum
 
 ## Running this program
 
-This program uses `uv` as a package manager, and `uv sync` is enough to install all dependencies.
+This program uses `uv` as a package manager, and `uv sync` is enough to install all dependencies. Hence, in all the following commands, `python` can be replaced with `uv run` for convenience.
 
 For generating documentation for a codebase in `<codebase_dir>`
 ```bash
