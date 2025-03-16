@@ -7,6 +7,62 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from agent.generate_documentation import generate_documentation
 from agent.format_docs import format_docs_file
 
+def write_docs_for_directory(directory, output_path):
+    """
+    Write documentation for all files in the given directory.
+
+    Args:
+        directory (Path): The directory to write documentation for.
+        output_path (Path): Path where docs should be written.
+    """
+    supported_lang_exts = ["py", "java", "cs", "rs", "ts", "js", "go", "rb"]
+    all_doc_files = []
+
+    # Create output directory if it doesn't exist
+    if not output_path.exists():
+        print(f"Creating output directory: {output_path}")
+        output_path.mkdir(parents=True, exist_ok=True)
+
+    # Verify directory exists
+    if not directory.exists() or not directory.is_dir():
+        print(f"Error: Directory {directory} does not exist.")
+        sys.exit(1)
+
+    # Walk through directory
+    for root, _, filenames in os.walk(str(directory)):
+        root_path = Path(root)
+        
+        # Create matching subdirectory structure in output
+        rel_path = Path(root).relative_to(directory)
+        current_output_dir = output_path / rel_path
+        current_output_dir.mkdir(parents=True, exist_ok=True)
+        docs_path = current_output_dir / "docs.md"
+        
+        # Create initial docs file
+        with open(docs_path, "w", encoding="utf-8") as f:
+            print("# Documentation for", root, "\n\n", file=f)
+        
+        has_docs = False
+        for filename in filenames:
+            file_ext = filename.split(".")[-1]
+            if file_ext in supported_lang_exts:
+                print("Writing docs for:", filename, "...")
+                write_docs_for_file(root_path / filename, str(directory), docs_path, append=True)
+                has_docs = True
+                print("Docs written for:", filename, "\n\n")
+            else:
+                print(f"Skipping {filename} - unsupported file type: .{file_ext}")
+        
+        if has_docs:
+            print(f"Formatting docs in {docs_path}...")
+            format_docs_file(docs_path)
+            all_doc_files.append(docs_path)
+            print(f"Docs formatted for {root}")
+
+    # Create index file
+    create_docs_index(output_path, all_doc_files)
+    print(f"Documentation index created at {output_path / 'docs_index.md'}")
+
 def main():
     """
     Main function to run the project.
