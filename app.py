@@ -1,8 +1,15 @@
+"""
+Flask app for the agent UI.
+"""
+
 import os
+import threading
+import queue
+import time
 import subprocess
 import uuid
 import shutil
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -26,6 +33,7 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['TRAP_BAD_REQUEST_ERRORS'] = True
 app.config['TRAP_HTTP_EXCEPTIONS'] = True
 
+running_processes = {}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -62,7 +70,10 @@ def run_main_script(process_type, input_dir, output_dir, documentation_dir=""):
 
 
 def process_file(process_type, code_dir=None, documentation_dir=None):
-    """Handles the common logic for both documentation and code generation."""
+    """
+    Handles the common logic for both documentation and code generation.
+    """
+
     unique_id = str(uuid.uuid4())
     output_dir = os.path.join(app.config['OUTPUT_FOLDER'], unique_id + "_output")
     os.makedirs(output_dir, exist_ok=True)
@@ -83,14 +94,16 @@ def process_file(process_type, code_dir=None, documentation_dir=None):
             return render_template(
                 'result.html',
                 stderr=stderr,
-                output_archive=f"{unique_id}_output.zip"
+                stdout=stdout,
+                output_archive=f"{unique_id}_output.zip",
+                output_id=unique_id
             )
-        else:
-            return render_template(
-                'index.html',
-                error=f"Error running main.py ({process_type}). Return code: {return_code}. Stderr: {stderr}. Stdout: {stdout}",
-                process_type=process_type
-            )
+
+        return render_template(
+            'index.html',
+            error=f"Error running main.py ({process_type}). Return code: {return_code}. Stderr: {stderr}. Stdout: {stdout}",
+            process_type=process_type
+        )
 
 
     except Exception as e:
@@ -168,6 +181,184 @@ def index():
 @app.route('/download/<filename>')
 def download_file(filename):
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
+
+@app.route('/list_files/<output_id>')
+def list_files(output_id):
+    """List files in the output directory."""
+    output_dir = os.path.join(app.config['OUTPUT_FOLDER'], f"{output_id}_output")
+
+    if not os.path.exists(output_dir):
+        return jsonify({"error": "Output directory not found", "files": []}), 404
+
+    files = []
+    for root, _, filenames in os.walk(output_dir):
+        for filename in filenames:
+            rel_path = os.path.relpath(os.path.join(root, filename), output_dir)
+            files.append(rel_path)
+
+    return jsonify({"files": files})
+
+@app.route('/view_file/<output_id>/<path:filename>')
+def view_file(output_id, filename):
+    """View a file's content."""
+    output_dir = os.path.join(app.config['OUTPUT_FOLDER'], f"{output_id}_output")
+    file_path = os.path.join(output_dir, filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+        return jsonify({"content": content})
+    except UnicodeDecodeError:
+        # Binary file
+        return jsonify({"content": "Binary file cannot be displayed"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def handle_process_io(process, input_queue, output_queue, execution_id):
+    """Handle I/O for a running subprocess in a separate thread."""
+    def read_output():
+        while process.poll() is None:
+            # Check for output from the process
+            line = process.stdout.readline()
+            if line:
+                output_queue.put(line.decode('utf-8', errors='ignore'))
+
+            # Check for input to send to the process
+            try:
+                if not input_queue.empty() and process.poll() is None:
+                    input_text = input_queue.get_nowait()
+                    process.stdin.write(input_text.encode('utf-8'))
+                    process.stdin.flush()
+            except Exception as e:
+                output_queue.put(f"Error sending input: {str(e)}\n")
+
+            time.sleep(0.1)
+
+        # Read any remaining output after process completes
+        remaining = process.stdout.read()
+        if remaining:
+            output_queue.put(remaining.decode('utf-8', errors='ignore'))
+
+        # Mark process as completed
+        running_processes[execution_id]['running'] = False
+
+    thread = threading.Thread(target=read_output)
+    thread.daemon = True
+    thread.start()
+
+@app.route('/run_code/<output_id>/<path:filename>', methods=['POST'])
+def run_code(output_id, filename):
+    """Run a Python file and set up I/O handling."""
+    output_dir = os.path.join(app.config['OUTPUT_FOLDER'], f"{output_id}_output")
+    file_path = os.path.join(output_dir, filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    if not filename.endswith('.py'):
+        return jsonify({"error": "Only Python files can be executed"}), 400
+
+    try:
+        # Create a unique ID for this execution
+        execution_id = str(uuid.uuid4())
+
+        # Start the process
+        process = subprocess.Popen(
+            ['python', file_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=output_dir,
+            bufsize=1,
+            universal_newlines=False
+        )
+
+        # Set up queues for I/O
+        input_queue = queue.Queue()
+        output_queue = queue.Queue()
+
+        # Store process info
+        running_processes[execution_id] = {
+            'process': process,
+            'input_queue': input_queue,
+            'output_queue': output_queue,
+            'running': True
+        }
+
+        # Start I/O handler thread
+        handle_process_io(process, input_queue, output_queue, execution_id)
+
+        # Wait a bit to collect initial output
+        time.sleep(0.5)
+
+        # Get any initial output
+        output = ""
+        while not output_queue.empty():
+            output += output_queue.get()
+
+        return jsonify({
+            "execution_id": execution_id,
+            "output": output
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/check_output/<execution_id>')
+def check_output(execution_id):
+    """Check for new output from a running process."""
+    if execution_id not in running_processes:
+        return jsonify({"error": "Execution not found"}), 404
+
+    process_data = running_processes[execution_id]
+    output = ""
+
+    while not process_data['output_queue'].empty():
+        output += process_data['output_queue'].get()
+
+    return jsonify({
+        "output": output,
+        "running": process_data['running']
+    })
+
+@app.route('/send_input/<execution_id>', methods=['POST'])
+def send_input(execution_id):
+    """Send input to a running process."""
+    if execution_id not in running_processes:
+        return jsonify({"error": "Execution not found"}), 404
+
+    process_data = running_processes[execution_id]
+
+    if not process_data['running']:
+        return jsonify({"error": "Process is not running"}), 400
+
+    try:
+        input_data = request.json.get('input', '')
+        process_data['input_queue'].put(input_data)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/stop_execution/<execution_id>', methods=['POST'])
+def stop_execution(execution_id):
+    """Stop a running process."""
+    if execution_id not in running_processes:
+        return jsonify({"error": "Execution not found"}), 404
+
+    process_data = running_processes[execution_id]
+
+    if not process_data['running']:
+        return jsonify({"error": "Process is not running"}), 400
+
+    try:
+        process_data['process'].terminate()
+        process_data['running'] = False
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
