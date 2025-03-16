@@ -30,7 +30,7 @@
             {% if process_type == 'documentation' or process_type is none %}
             <div class="mb-3">
                 <label for="code" class="form-label">Upload Code Archive:</label>
-                <input type="code" class="form-control" name="code">
+                <input type="file" class="form-control" name="code">
                 <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing your code (max 1 GiB).</div>
             </div>
             {% endif %}
@@ -38,8 +38,8 @@
             {% if process_type == 'code_generation' %}
             <div class="mb-3">
                 <label for="documentation" class="form-label">Documentation:</label>
-                <textarea class="form-control" name="documentation" rows="5"></textarea>
-                <div class="form-text">Enter the documentation to generate code from.</div>
+                <input type="file" class="form-control" name="documentation">
+                <div class="form-text">Upload a .zip, .tar, .gz, .tgz, or .tar.gz file containing your documentation (max 1 GiB).</div>
             </div>
             {% endif %}
 
