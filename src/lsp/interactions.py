@@ -1,4 +1,7 @@
-import ast
+"""
+This is a CLI script to play around with LSP predictions
+"""
+
 import argparse
 import asyncio
 import pathlib
@@ -8,13 +11,57 @@ import re
 import multilspy
 import multilspy.multilspy_types as types
 
+def setup_multilspy(src_dir, code_language=multilspy.multilspy_config.Language.PYTHON):
+    # Assume that we are using Python, can get it to work for others as well
+    config = multilspy.multilspy_config.MultilspyConfig.from_dict({
+        "code_language": code_language,
+    })
+    logger = multilspy.multilspy_logger.MultilspyLogger()
+    lsp = multilspy.SyncLanguageServer.create(config, logger, str(src_dir))
+    return lsp
+
+
+def get_symbol_code(lsp, symbol):
+    file_path = multilspy.multilspy_utils.PathUtils.uri_to_path(symbol['location']['uri'])
+    definition = lsp.request_definition(file_path, file_symbol['location']['range']['start']['line'], file_symbol['location']['range']['start']['character'])
+    match definition:
+        case []:
+            return None
+        case [x]:
+            definition = x
+        case _:
+            print(definition)
+            raise ValueError("Multiple defitions found!")
+
+    doc_symbols = get_server_doc_symbol(lsp, definition['relativePath'])
+
+    # copy code from file and send it over
+    file_content = None
+    with open(definition['absolutePath'], 'r') as f:
+        file_content = f.readlines()
+
+    
+    real_symbol = traverse_doc_symbols(doc_symbols, file_symbol)
+    symbol_lines = file_content[real_symbol["range"]["start"]["line"]:real_symbol["range"]["end"]["line"] + 1]
+
+    return symbol_lines
+    
+def get_code(file_path: str, symbol_name: str, root_dir: str):
+    lsp = setup_multilspy(root_dir)
+
+    with lsp.start_server():
+        symbols = get_server_symbols(lsp, args.symbol_name)
+        if symbols is None or symbols == []:
+            raise ValueError("invalid symbol name received! please try again")
+
+        return [get_code(lsp, symbol) for symbol in symbols]
+
 def get_server_symbols(lsp: multilspy.SyncLanguageServer, symbol_name: str):
     response = asyncio.run_coroutine_threadsafe(
         lsp.language_server.server.send.workspace_symbol({
             "query": symbol_name
         }), lsp.loop).result(timeout=lsp.timeout)
     return response
-
 
 def get_server_doc_symbol(lsp: multilspy.SyncLanguageServer, text_document: str):
     response = asyncio.run_coroutine_threadsafe(
@@ -99,8 +146,9 @@ with lsp.start_server():
     # TODO: figure out what does the tree do
     symbols = get_server_symbols(lsp, args.symbol_name)
     # TODO: write code to get one of multiple symbols
+    print(symbols)
     match symbols:
-        case []:
+        case [] | None:
             raise ValueError("No symbols found!")
         case [x]:
             file_symbol = x
@@ -109,6 +157,7 @@ with lsp.start_server():
             raise ValueError("Multiple symbols found!")
 
     file_path = multilspy.multilspy_utils.PathUtils.uri_to_path(file_symbol['location']['uri'])
+
     definition = lsp.request_definition(file_path, file_symbol['location']['range']['start']['line'], file_symbol['location']['range']['start']['character'])
     match definition:
         case []:
@@ -118,10 +167,10 @@ with lsp.start_server():
         case _:
             print(definition)
             raise ValueError("Multiple defitions found!")
-
+        
     doc_symbols = get_server_doc_symbol(lsp, definition['relativePath'])
     print("Doc symbol: ", doc_symbols)
-    
+
     # copy code from file and send it over
     file_content = None
     with open(definition['absolutePath'], 'r') as f:
