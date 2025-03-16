@@ -70,6 +70,7 @@ def create_agent(metadata: Dict[str, Any] | None = None):
     
     # Create Azure OpenAI agent
     agent = AzureOpenAIAgent(config=agent_config)
+    agent.max_iterations = 15
     
     # Set up registry and orchestrator
     agent_registry = AgentRegistry()
@@ -117,7 +118,7 @@ def process_message(user_message: str, metadata: Dict[str, Any] | None = None, s
     
     return response
 
-def generate_documentation(code_snippet: str, file_path: str=""):
+def generate_documentation(code_snippet: str, file_path: str="", project_dir: str="") -> str:
     """
     Generate documentation for a code snippet.
     
@@ -132,7 +133,11 @@ def generate_documentation(code_snippet: str, file_path: str=""):
     user_message = get_user_message(code_snippet)
     
     # Process the message with the agent
-    metadata = {"code": code_snippet, "path": file_path} if file_path else {"code": code_snippet}
+    metadata = {
+        "code": code_snippet,
+        "path": file_path,
+        "project_dir": project_dir
+    }
     response = process_message(user_message=user_message, metadata=metadata)
     
     # Extract the documentation from the response
