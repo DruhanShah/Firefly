@@ -1,0 +1,20 @@
+body {
+    padding-top: 20px; /* Add some padding to the top of the body */
+}
+
+.container {
+    max-width: 800px; /* Limit the width of the container */
+}
+
+pre {
+    background-color: #f8f9fa; /* Light background for <pre> tags */
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    overflow-x: auto; /* Add horizontal scrolling if the output is too wide */
+}
+
+/* Example:  Make the "About" link a button */
+.btn-primary {
+    margin-top: 10px;
+}

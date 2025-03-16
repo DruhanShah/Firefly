@@ -24,7 +24,7 @@ def main():
 
     # Subparser for documentation generation
     docs_parser = subparsers.add_parser(
-        "docs", help="Generate documentation from code in a directory."
+        "docs", help="Generate documentation froom code in a directory."
     )
     docs_parser.add_argument(
         "--codebase_dir",
