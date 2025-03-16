@@ -14,6 +14,17 @@ def main():
     args = parse_arguments()
     
     supported_lang_exts = ["py", "java", "cs", "rs", "ts", "js", "go", "rb"]
+    
+    # Determine output location
+    output_path = None
+    if args.output:
+        output_path = Path(args.output).absolute()
+        if not output_path.exists():
+            print(f"Creating output directory: {output_path}")
+            output_path.mkdir(parents=True, exist_ok=True)
+        elif not output_path.is_dir():
+            print(f"Error: Output path {output_path} exists but is not a directory.")
+            sys.exit(1)
 
     if args.file:
         file_path = Path(args.file).absolute()
@@ -23,8 +34,8 @@ def main():
         if file_path.suffix[1:] not in supported_lang_exts:
             print(f"Warning: File type {file_path.suffix} may not be supported.")
         print("Writing docs for:", file_path.name, "...")
-        write_docs_for_file(file_path)
-        docs_path = Path(file_path.parent, "docs.md")
+        docs_path = output_path / "docs.md" if output_path else Path(file_path.parent, "docs.md")
+        write_docs_for_file(file_path, docs_path)
         print("Formatting docs for:", docs_path, "...")
         format_docs_file(docs_path)
         print("Docs written and formatted for:", file_path.name)
@@ -39,7 +50,16 @@ def main():
 
         for root, _, filenames in os.walk(str(dir_path)):
             root_path = Path(root)
-            docs_path = Path(root_path, "docs.md")
+            
+            # Determine the corresponding output directory path
+            if output_path:
+                # Create a matching subdirectory structure in output_path
+                rel_path = Path(root).relative_to(dir_path)
+                current_output_dir = output_path / rel_path
+                current_output_dir.mkdir(parents=True, exist_ok=True)
+                docs_path = current_output_dir / "docs.md"
+            else:
+                docs_path = root_path / "docs.md"
             
             # Create initial docs file for this directory
             with open(docs_path, "w", encoding="utf-8") as f:
@@ -50,7 +70,7 @@ def main():
                 file_ext = filename.split(".")[-1]
                 if file_ext in supported_lang_exts:
                     print("Writing docs for:", filename, "...")
-                    write_docs_for_file(root_path / filename)
+                    write_docs_for_file(root_path / filename, docs_path, append=True)
                     has_docs = True
                     print("Docs written for:", filename, "\n\n")
                 else:
@@ -64,8 +84,9 @@ def main():
                 print(f"Docs formatted for {root}")
         
         # Create index file with links to all docs
-        create_docs_index(dir_path, all_doc_files)
-        print(f"Documentation index created at {dir_path / 'docs_index.md'}")
+        index_output = output_path if output_path else dir_path
+        create_docs_index(index_output, all_doc_files)
+        print(f"Documentation index created at {index_output / 'docs_index.md'}")
 
 def parse_arguments():
     """
@@ -82,15 +103,19 @@ def parse_arguments():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-f", "--file", help="Path to a specific file to document")
     group.add_argument("-d", "--directory", help="Path to a directory to recursively document")
+    parser.add_argument("-o", "--output", help="Path to store generated documentation (default: same directory as source)")
     
     return parser.parse_args()
 
-def write_docs_for_file(file):
+def write_docs_for_file(file, output_path=None, append=False):
     """
     Write documentation for the given file.
 
     Args:
         file (Path): The file to write documentation for.
+        output_path (Path, optional): Path where docs should be written.
+                                     If None, writes to file.parent/docs.md
+        append (bool, optional): Whether to append to existing file or create new.
     """
     print("Setting up LSP server...")
     # lsp_server = setup_lsp_server(file)
@@ -102,8 +127,17 @@ def write_docs_for_file(file):
     # documentation = [generate_documentation(get_code(symbol, file), file) for symbol in symbols if symbol.kind in [2, 5, 6, 12]]
     documentation = [generate_documentation(file.read_text())]
 
-    with open(Path(file.parent, "docs.md"), "a", encoding="utf-8") as f:
-        print("## Documentation for", file.name, "\n", file=f)
+    # Determine where to write the docs
+    if output_path is None:
+        output_path = Path(file.parent, "docs.md")
+    
+    # Write the documentation
+    mode = "a" if append else "w"
+    with open(output_path, mode, encoding="utf-8") as f:
+        if not append:
+            print("# Documentation for", file.name, "\n", file=f)
+        else:
+            print("## Documentation for", file.name, "\n", file=f)
         print("\n".join(documentation), file=f)
 
 def create_docs_index(base_dir, doc_files):
@@ -123,10 +157,14 @@ def create_docs_index(base_dir, doc_files):
         # Group by directory for better organization
         by_directory = {}
         for doc_file in doc_files:
-            rel_dir = doc_file.parent.relative_to(base_dir)
-            if rel_dir not in by_directory:
-                by_directory[rel_dir] = []
-            by_directory[rel_dir].append(doc_file)
+            try:
+                rel_dir = doc_file.parent.relative_to(base_dir)
+                if rel_dir not in by_directory:
+                    by_directory[rel_dir] = []
+                by_directory[rel_dir].append(doc_file)
+            except ValueError:
+                # Handle case where doc_file might not be relative to base_dir
+                print(f"Warning: {doc_file} is not relative to {base_dir}, skipping in index")
         
         # Write links organized by directory
         for dir_path in sorted(by_directory.keys()):

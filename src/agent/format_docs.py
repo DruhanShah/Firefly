@@ -28,7 +28,7 @@ def create_agent():
     agent_config = AzureOpenAIAgentConfig(
         agent_name="documentation_formatter",
         description="An agent that formats Markdown documentation to improve readability",
-        model_name="gpt-4o",
+        model_name="o3-mini",
         agent_type="ChatAgent",
         tool_registry=tool_registry,
         system_prompt=get_system_prompt(),
