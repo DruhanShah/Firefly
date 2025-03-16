@@ -103,8 +103,9 @@ with lsp.start_server():
         case []:
             raise ValueError("No symbols found!")
         case [x]:
-            definition = x
+            file_symbol = x
         case _:
+            print(symbols)
             raise ValueError("Multiple symbols found!")
 
     file_path = multilspy.multilspy_utils.PathUtils.uri_to_path(file_symbol['location']['uri'])
@@ -115,6 +116,7 @@ with lsp.start_server():
         case [x]:
             definition = x
         case _:
+            print(definition)
             raise ValueError("Multiple defitions found!")
 
     doc_symbols = get_server_doc_symbol(lsp, definition['relativePath'])
@@ -122,7 +124,7 @@ with lsp.start_server():
     
     # copy code from file and send it over
     file_content = None
-    with open(args.src_file, 'r') as f:
+    with open(definition['absolutePath'], 'r') as f:
         file_content = f.readlines()
 
     real_symbol = traverse_doc_symbols(doc_symbols, file_symbol)
@@ -138,6 +140,7 @@ with lsp.start_server():
     while True:
         while current_context != []:
             curr = current_context[-1]
+            print(curr)
             print(''.join([f"{idx}:{code}" for idx, code in enumerate(curr['code'])]))
             range_in = input("Enter range (line:col format): ")
             if range_in == 'pop':
@@ -155,7 +158,7 @@ with lsp.start_server():
 
         locations = lsp.request_definition(curr['file_name'], final_line, col)
 
-        match definition:
+        match locations:
             case []:
                 raise ValueError("No definitions found!")
             case [x]:
@@ -164,7 +167,7 @@ with lsp.start_server():
                 print("Locations: ", locations)
                 idx = int(input("Enter index: "))
                 chosen_location = locations[idx]
-                raise ValueError("Multiple defitions found!")
+                raise ValueError("Multiple locations found!")
 
         doc_symbols = get_server_doc_symbol(lsp, chosen_location['relativePath'])
         search_symbol = {
@@ -183,7 +186,7 @@ with lsp.start_server():
         # TODO: Use definition for something useful
         
         real_symbol = traverse_doc_symbols(doc_symbols, search_symbol)
-        
+        print(real_symbol)
         file_content = []
         with open(chosen_location['absolutePath'], 'r') as f:
             file_content = f.readlines()
@@ -191,7 +194,7 @@ with lsp.start_server():
         symbol_lines = file_content[real_symbol['range']['start']['line']:real_symbol['range']['end']['line'] + 1]
         print(f"Symbol lines: {symbol_lines}")
         current_context.append({
-            "location": chosen_location,
+            "location": real_symbol,
             "code": symbol_lines,
             "file_name": chosen_location['relativePath']
         })
