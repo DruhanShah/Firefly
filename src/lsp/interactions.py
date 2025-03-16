@@ -22,7 +22,7 @@ def setup_multilspy(src_dir, code_language=multilspy.multilspy_config.Language.P
     return lsp
 
 
-def get_symbol_code(lsp: multilspy.SyncLanguageServer, symbol: multilspy.Types.) -> List[str]:
+def get_symbol_code(lsp: multilspy.SyncLanguageServer, symbol) -> List[str]:
     file_path = multilspy.multilspy_utils.PathUtils.uri_to_path(symbol['location']['uri'])
     symbol_range_start = symbol['location']['range']['start']
     definition = lsp.request_definition(file_path, symbol_range_start['line'], symbol_range_start['character'])
