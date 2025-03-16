@@ -45,6 +45,6 @@ def lsp_tool_definition(metadata: Dict[str, Any] | None) -> Callable:
             return "No file path or project_dir provided (metadata not setup correctly)."
         result = lsp_interactions.get_code(file_path, symbol_name, project_dir)
         if result is None:
-            return f"Symbol '{symbol_name}' not found in the code snippet at row {row} and column {col}. Please ensure the symbol exists and the row and column are correct and try again."
+            return f"Symbol '{symbol_name}' not found in the code snippet."
         return result
     return query_symbol_tool

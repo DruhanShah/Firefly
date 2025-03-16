@@ -15,6 +15,7 @@ dependencies = [
     "openai>=1.66.3",
     "sentence-transformers>=3.4.1",
     "multilspy>=0.0.14",
+    "textual>=2.1.2",
 ]
 
 [tool.uv.sources]

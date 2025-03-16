@@ -530,70 +530,46 @@ def main():
     # Example problem statement
     problem_statement = """
 Vision & Challenges
-The AI-Powered Virtual Band Jam Session is designed to recreate the energy and spontaneity of live music collaboration using multi-agent AI. Unlike traditional online music-making, which often relies on sequential recordings or fixed loops, this system leverages a network of AI-driven instrumentalists, conductors, and improvisers to create authentic, real-time jam sessions. Each AI agent listens, adapts, and improvises dynamically, allowing users to experience or participate in a truly interactive and evolving musical performance.
+Managing grocery inventory and shopping efficiently can be time-consuming, error-prone, and costly—whether for households, small businesses, or large-scale operations. The AI-Powered Grocery Manager acts as a smart inventory and shopping assistant, helping users track, plan, and optimize their grocery usage while minimizing waste and overspending.
 
 Current Challenges
-Real-Time Synchronization
-Traditional online music collaboration faces latency and synchronization challenges that disrupt live performance.
+Inventory Tracking
+Manual tracking of grocery items is time-consuming and often leads to inaccurate stock levels.
 
-Musical Adaptation
-Creating AI musicians that can genuinely listen, respond, and improvise in real-time requires sophisticated coordination.
+Waste Prevention
+Poor planning and overbuying often result in food waste and unnecessary expenses.
 
-Style Versatility
-Supporting multiple musical genres and styles while maintaining authentic expression poses significant technical challenges.
+Shopping Optimization
+Finding the best deals and planning efficient shopping trips across multiple stores is complex and time-consuming.
 
 Multi-Agent Solution
-The system deploys a set of specialized AI agents, each responsible for a distinct musical role, ensuring expressive, dynamic, and harmonically rich jam sessions.
+The system is powered by specialized AI agents, each focusing on different aspects of grocery management, ensuring a seamless and optimized experience.
 
-Instrumentalist Agents
-Simulate musicians playing different instruments (guitar, drums, keyboard, bass), each with unique playing styles and improvisational patterns.
-
-Outcome
-Generate real-time, harmonically and rhythmically adaptive performances that respond to other agents and human musicians.
-Conductor/Interaction Manager Agent
-Oversees the entire performance, managing transitions, tempo shifts, and interplay between instrumentalist agents.
+Consumption Tracking & Prediction Agent
+Learns household or business grocery usage patterns, predicting when items will run low and need replenishment.
 
 Outcome
-Ensures cohesion, energy balance, and smooth synchronization between AI and human musicians.
-Improvisation and Adaptation Agent
-Introduces spontaneous melodic and rhythmic variations, responding to the evolving jam session.
+Prevents last-minute shortages and avoids unnecessary purchases.
+Smart Shopping List Generator Agent
+Creates personalized shopping lists based on user preferences, meal plans, and budget constraints.
 
 Outcome
-Keeps performances fresh, dynamic, and engaging, preventing repetitive patterns.
-Audience Interaction Agent
-Allows users to shape the session by suggesting themes, triggering solos, or interacting with the AI band through inputs.
+Ensures cost-effective, waste-free grocery shopping with optimized list recommendations.
+Recipe & Meal Planning Agent
+Suggests meal ideas based on available ingredients, helping users plan meals without extra shopping trips.
 
 Outcome
-Turns passive listening into an interactive and participatory experience.
-Feedback and Learning Agent
-Captures session data, user interactions, and feedback to refine agent behaviors and musical responsiveness.
+Encourages efficient grocery usage, reduces food waste, and simplifies meal planning.
+Expiration & Freshness Monitoring Agent
+Tracks expiry dates of perishable items and reminds users to use them before they spoil.
 
 Outcome
-Continuously enhances the expressiveness and adaptability of AI musicians over time.
-Impact & Future
-By leveraging multi-agent AI collaboration, the AI-Powered Virtual Band Jam Session redefines how musicians and audiences experience live music in digital spaces. It enables improvised, expressive, and interactive musical performances, making AI-driven jam sessions as engaging and unpredictable as live human collaborations.
-
-Future Expansions
-Augmented Reality (AR) Jam Sessions
-AR Integration Agent adds visual overlays and virtual stage elements
+Reduces food waste and unnecessary costs by ensuring timely consumption.
+Dietary & Preference Alignment Agent
+Ensures grocery selections align with dietary needs, allergies, or nutritional goals.
 
 Outcome
-Expands the interaction model, making AI-driven music more immersive and visually engaging.
-Collaborative Jam Spaces
-Multi-User Collaboration Agent enables remote musicians to join with AI-assisted instruments
-
-Outcome
-Facilitates virtual bands where musicians can experiment and compose music together across distances.
-Genre-Specific Modes
-Customization Agent enables selection of musical genres and styles
-
-Outcome
-Provides highly personalized and genre-accurate improvisation, catering to different musical tastes.
-Live Performance Recording and Sharing
-Recording and Analytics Agent captures and enhances jam sessions
-
-Outcome
-Encourages content creation, skill-building, and community-driven collaboration in AI-powered music performance.
+Helps users stick to health-conscious or allergen-free shopping while maintaining variety in meals.
 
 """
     
