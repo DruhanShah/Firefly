@@ -37,14 +37,20 @@ def lsp_tool_definition(metadata: Dict[str, Any] | None) -> Callable:
         """
         print(f"Tool call: Querying symbol '{symbol_name}'...")
         if metadata.get("code") is None:
+            print("No code snippet provided (metadata not setup correctly).")
             return "No code snippet provided (metadata not setup correctly)."
         code = metadata["code"]
         file_path = metadata.get("path")
         project_dir = metadata.get("project_dir")
         if file_path is None or project_dir is None:
+            print("No file path or project_dir provided (metadata not setup correctly).")
             return "No file path or project_dir provided (metadata not setup correctly)."
+        print(file_path, project_dir, symbol_name)
         result = lsp_interactions.get_code(file_path, symbol_name, project_dir)
         if result is None:
+            print(f"Symbol '{symbol_name}' not found in the code snippet.")
             return f"Symbol '{symbol_name}' not found in the code snippet."
-        return result
+        to_ret = '\n----\n'.join('\n'.join([f"Symbol {i}"] + code) for i, code in enumerate(result))
+        print(f"Tool response: {to_ret}")
+        return to_ret
     return query_symbol_tool

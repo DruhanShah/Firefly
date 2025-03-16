@@ -70,7 +70,7 @@ def main():
                 file_ext = filename.split(".")[-1]
                 if file_ext in supported_lang_exts:
                     print("Writing docs for:", filename, "...")
-                    write_docs_for_file(root_path / filename, docs_path, append=True)
+                    write_docs_for_file(root_path / filename, str(dir_path), docs_path, append=True)
                     has_docs = True
                     print("Docs written for:", filename, "\n\n")
                 else:
@@ -107,7 +107,7 @@ def parse_arguments():
     
     return parser.parse_args()
 
-def write_docs_for_file(file, output_path=None, append=False):
+def write_docs_for_file(file, dir_path = None, output_path=None, append=False):
     """
     Write documentation for the given file.
 
@@ -125,7 +125,7 @@ def write_docs_for_file(file, output_path=None, append=False):
 
     print("Generating documentation...")
     # documentation = [generate_documentation(get_code(symbol, file), file) for symbol in symbols if symbol.kind in [2, 5, 6, 12]]
-    documentation = [generate_documentation(file.read_text())]
+    documentation = [generate_documentation(file.read_text(), str(file), dir_path)]
 
     # Determine where to write the docs
     if output_path is None:

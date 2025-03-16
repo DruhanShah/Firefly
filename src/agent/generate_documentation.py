@@ -40,16 +40,8 @@ def create_agent(metadata: Dict[str, Any] | None = None):
                     "type": "string",
                     "description": "The name of the symbol to query."
                 },
-                "row": {
-                    "type": "integer",
-                    "description": "The row number where the symbol is located in the code snippet provided."
-                },
-                "col": {
-                    "type": "integer",
-                    "description": "The column number where the symbol is located in the code snippet provided."
-                }
             },
-            required=["symbol_name", "row", "col"]
+            required=["symbol_name"]
         )
         tool_registry.register_tool(lsp_tool)
     
