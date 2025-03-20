@@ -45,7 +45,7 @@ Follow these steps to complete the task:
 Throughout this process, wrap your thought process in <thinking> tags to show your reasoning, especially when making important decisions about the code structure or implementation details.
 
 Remember:
-- Query the documentation database multiple times to ensure you fully understand how to use the moya library and Azure OpenAI API.
+- Query the documentation database multiple times to ensure you fully understand how to use the moya library and Azure OpenAI API. Do not make any assumptions about features of the code.
 - Use the execute_python tool frequently to verify that your code works as expected.
 - Ensure that all required parameters are set for the objects or methods you use.
 
@@ -55,7 +55,7 @@ Your final output should look like this:
 # Your complete Python code here
 ```
 
-Begin by querying the documentation and planning your approach. Your final output should consist only of the complete Python code and should not duplicate or rehash any of the work you did in the thinking block.
+Begin by querying the documentation and planning your approach. Make sure you know the documentation well before writing any code. Do not include any aribtrary methods and ensure all required attributes are set for the objects or methods you use. Ensure that you add `agent_type` to all Agents initialised and do not include `temperature` in them. THIS IS VERY IMPORTANT.
 """
 
 def get_system_prompt() -> str:
